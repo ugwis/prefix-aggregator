@@ -16,7 +16,7 @@ Expected to
 10.0.2.0/24
 ```
   
-## Large prefix includes small prefix 
+## The bigger, the better.
 ```
 $ prefix-aggregator << EOS
 10.0.0.0/8
