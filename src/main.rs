@@ -22,6 +22,7 @@ fn dectoipv4(mut dec: u32) -> String {
     return ret;
 }
 
+// Calculate Network address from CIDR block
 fn calc_network_addr(cidr: String) -> String {
     let v: Vec<&str> = cidr.split('/').collect();
     let net = v[0].to_string();
@@ -31,6 +32,7 @@ fn calc_network_addr(cidr: String) -> String {
     return dectoipv4(network_address_num);
 }
 
+// Calculate Broadcast address from CIDR block
 fn calc_broadcast_addr(cidr: String) -> String {
     let v: Vec<&str> = cidr.split('/').collect();
     let net = v[0].to_string();
@@ -40,16 +42,19 @@ fn calc_broadcast_addr(cidr: String) -> String {
     return dectoipv4(network_address_num);
 }
 
+// Calculate Network mask from CIDR block
 fn calc_network_mask(cidr: String) -> u32 {
     let v: Vec<&str> = cidr.split('/').collect();
     let mask = v[1].parse::<u32>().unwrap();
     return mask;
 }
 
+// Generate CIDR from Network address and mask
 fn gen_cidr(network: String, mask: u32) -> String {
     return network + "/" + &mask.to_string()
 }
 
+// Merge two CIDR blocks
 fn merge(cidr1: String, cidr2: String) -> Vec<String> {
     let cidr1_net = ipv4todec(calc_network_addr(cidr1.clone()));
     let cidr2_net = ipv4todec(calc_network_addr(cidr2.clone()));
@@ -75,10 +80,11 @@ fn merge(cidr1: String, cidr2: String) -> Vec<String> {
     return vec![cidr1, cidr2];
 }
 
+// Check wether two CIDR blocks are adjascent
 fn is_adjascent(cidr1: String, cidr2: String) -> bool {
     let cidr2_net = ipv4todec(calc_network_addr(cidr2.clone()));
     let cidr1_brd = ipv4todec(calc_broadcast_addr(cidr1.clone()));
-    return cidr1_brd + 1 == cidr2_net; 
+    return cidr1_brd + 1 == cidr2_net;
 }
 
 fn main() {
