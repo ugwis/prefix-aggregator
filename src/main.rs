@@ -64,10 +64,10 @@ fn merge(cidr1: String, cidr2: String) -> Vec<String> {
     let cidr2_mask = calc_network_mask(cidr2.clone());
 
     //inclusion
-    if cidr1_net < cidr2_net && cidr2_brd < cidr1_brd {
+    if cidr1_net <= cidr2_net && cidr2_brd <= cidr1_brd {
         return vec![cidr1];
     }
-    if cidr2_net < cidr1_net && cidr1_brd < cidr2_brd {
+    if cidr2_net <= cidr1_net && cidr1_brd <= cidr2_brd {
         return vec![cidr2];
     }
 
