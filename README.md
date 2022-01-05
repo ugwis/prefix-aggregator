@@ -29,7 +29,7 @@ Expected to
 10.0.0.0/8
 ```
 
-## Focus only on the information you need 
+## Focus only on your goal 
 ```
 $ curl -s https://ip-ranges.amazonaws.com/ip-ranges.json | jq -r '.prefixes[].ip_prefix' | sort -V | uniq | wc -l
 4314
