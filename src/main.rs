@@ -1,14 +1,53 @@
 use std::io::{self, BufRead};
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::net::Ipv4Addr;
+use std::net::AddrParseError;
 use std::str::FromStr;
 use std::num::ParseIntError;
 
+enum MyError {
+    ParseIntError(ParseIntError),
+    ParseIpv4Error(AddrParseError),
+}
+
+impl Display for MyError {
+    fn fmt(&self, _: &mut Formatter) -> std::fmt::Result {
+        match *self {
+            MyError::ParseIntError(ref e) => print!("Parse int error {}",e),
+            MyError::ParseIpv4Error(ref e) => print!("Parse Ipv4 address error {}",e)
+        }
+        Ok(())
+    }
+}
+
+impl std::convert::From<ParseIntError> for MyError {
+    fn from(e: ParseIntError) -> Self {
+        MyError::ParseIntError(e)
+    }
+}
+
+impl std::convert::From<AddrParseError> for MyError {
+    fn from(e: AddrParseError) -> Self {
+        MyError::ParseIpv4Error(e)
+    }
+}
+
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 struct Ipv4Cidr {
     address: Ipv4Addr,
     mask: u8,
 }
 
 impl Ipv4Cidr {
+    fn new(address: Ipv4Addr, mask: u8) -> Self {
+        let cidr = Ipv4Cidr { address, mask };
+        return Self {
+            address: cidr.network_addr(),
+            mask: cidr.network_mask(),
+        }
+    }
     fn to_string(&self) -> String {
         format!("{}/{}", self.address, self.mask)
     }
@@ -25,120 +64,97 @@ impl Ipv4Cidr {
         self.mask
     }
     fn generate_wrap_cidr(&self) -> Ipv4Cidr {
-        Ipv4Cidr{
-            address: self.address,
-            mask: self.mask - 1,
-        }
+        Ipv4Cidr::new(
+            self.address,
+            self.mask - 1
+        )
     }
 }
 
 impl FromStr for Ipv4Cidr {
-    type Err = ParseIntError;
+    type Err = MyError;
     fn from_str(cidr: &str) -> Result<Self, Self::Err> {
         let v: Vec<&str> = cidr.split('/').collect();
-        let address = Ipv4Addr::from_str(v[0]).unwrap();
-        //self.addresss = self.network_addr();
-        let mask = v[1].parse::<u8>().unwrap();
-        Ok(Ipv4Cidr{
-            address: address,
-            mask: mask,
-        })
+        Ok(Ipv4Cidr::new(
+            Ipv4Addr::from_str(v[0]).unwrap(),
+            v[1].parse::<u8>()?
+        ))
     }
 }
 
-/*fn ipv4todec(ipv4: String) -> u32 {
-    let v: Vec<&str> = ipv4.split('.').collect();
-    let mut sum: u32 = 0;
-    for x in v {
-        sum = sum*256 + x.parse::<u32>().unwrap();
-    }
-    return sum;
-}
-
-fn dectoipv4(mut dec: u32) -> String {
-    let mut ret: String = "".to_string();
-    for i in 0..4 {
-        if i > 0 {
-            ret = ".".to_string() + &ret;
-        }
-        ret = (dec % 256).to_string() + &ret;
-        dec /= 256;
-    }
-    return ret;
-}*/
 
 // Merge two CIDR blocks
-fn merge(cidr1: Ipv4Cidr, cidr2: Ipv4Cidr) -> Vec<Ipv4Cidr> {
+fn merge(cidr1: Ipv4Cidr, cidr2: Ipv4Cidr) -> Option<Ipv4Cidr> {
     // Check wether cidr1 includes cidr2 vice versa
     if cidr1.network_addr() <= cidr2.network_addr() && cidr2.broadcast_addr() <= cidr1.broadcast_addr() {
-        return vec![cidr1];
+        return Some(cidr1);
     }
     if cidr2.network_addr() <= cidr1.network_addr() && cidr1.broadcast_addr() <= cidr2.broadcast_addr() {
-        return vec![cidr2];
+        return Some(cidr2);
     }
 
     // Check wether cidr1 is adjascent to cidr2 vice versa
-    if cidr1.network_mask() == cidr2.network_mask() {
-        let cidr3 = cidr1.generate_wrap_cidr();
-        if cidr1.network_addr() < cidr2.network_addr() {
-            if cidr1.network_addr() == cidr3.network_addr() && cidr2.broadcast_addr() == cidr3.broadcast_addr() {
-                return vec![cidr3];
-            }
-        }
-        if cidr2.network_addr() < cidr1.network_addr() {
-            if cidr2.network_addr() == cidr3.network_addr() && cidr1.broadcast_addr() == cidr3.broadcast_addr() {
-                return vec![cidr3];
-            }
-        }
+    let cidr3 = cidr1.generate_wrap_cidr();
+    let cidr4 = cidr2.generate_wrap_cidr();
+    //println!("[{}-{}]{} == {}: {}", cidr1.to_string(), cidr2.to_string(), cidr3.to_string(), cidr4.to_string(), cidr3==cidr4);
+    if cidr3 == cidr4 && cidr1 != cidr2 {
+        return Some(cidr3);
     }
-    return vec![cidr1, cidr2];
+    return None;
 }
 
-// Check wether two CIDR blocks are adjascent
-/*fn is_adjascent(cidr1: String, cidr2: String) -> bool {
-    let cidr2_net = ipv4todec(calc_network_addr(cidr2.clone()));
-    let cidr1_brd = ipv4todec(calc_broadcast_addr(cidr1.clone()));
-    return cidr1_brd + 1 == cidr2_net;
-}*/
+// Check wether two CIDR blocks are not mergable but adjascent
+fn is_adjascent(cidr1: Ipv4Cidr, cidr2: Ipv4Cidr) -> bool {
+    return u32::from(cidr1.broadcast_addr()) + 1 == u32::from(cidr2.network_addr());
+}
+
 
 fn main() {
     let stdin = io::stdin();
     let mut cidrs = Vec::new();
     for line in stdin.lock().lines() {
-        cidrs.push(Ipv4Cidr::from_str(&line.unwrap()));
+        let line = line.unwrap();
+        let line = line.as_str().trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let cidr = match Ipv4Cidr::from_str(line) {
+            Ok(cidr) => cidr,
+            Err(e) => panic!("Failed to parse {:?} as CIDR: {}", line, e),
+        };
+        cidrs.push(cidr);
     }
     //cidrs.sort();
     /*cidrs.sort_by(|a, b| {
         calc_network_addr(b).cmp(calc_network_addr(&a)));
     }*/
-    /*let mut stack = Vec::new();
+    let mut stack = Vec::new();
     for cidr in cidrs {
         stack.push(cidr);
         //println!("{:?}", stack);
         while stack.len() >= 2 {
-            let m2 = stack.pop().unwrap();
-            let m1 = stack.pop().unwrap();
-            let merged = merge(m1.clone(), m2.clone());
-            if merged.len() == 1 {
-                //mergeable
-                stack.push(merged[0].clone());
-            } else {
-                stack.push(merged[0].clone());
-                if ! is_adjascent(m1.clone(), m2.clone()) {
-                    for x in stack {
-                        println!("{}", x);
+            let cidr2 = stack.pop().unwrap();
+            let cidr1 = stack.pop().unwrap();
+            let merged = merge(cidr1, cidr2);
+            match merged {
+                Some(merged) => {
+                    stack.push(merged);
+                },
+                None => {
+                    stack.push(cidr1);
+                    if ! is_adjascent(cidr1, cidr2) {
+                        for x in stack {
+                            println!("{}", x.to_string());
+                        }
+                        stack = Vec::new();
                     }
-                    stack = Vec::new();
-                }
-                stack.push(merged[1].clone());
-                break;
+                    stack.push(cidr2);
+                    break;
+                },
             }
         }
     }
     for x in stack {
-        println!("{}", x);
-    }*/
-    /*let args: Vec<String> = env::args().collect();
-    let dec = dectoipv4(ipv4todec(&args[1]));
-    println!("{}", dec);*/
+        println!("{}", x.to_string());
+    }
 }
