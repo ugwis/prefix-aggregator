@@ -54,6 +54,7 @@ jobs:
           toolchain: stable
           override: true
           components: clippy, rustfmt
+          target: ${{ matrix.target }}
 
       # Check code formatting
       - name: Check formatting
@@ -75,7 +76,7 @@ jobs:
         with:
           command: build
           args: --release --target=${{ matrix.target }}
-          use-cross: true
+          use-cross: ${{ contains(matrix.os, 'ubuntu') }}
 
       # Run tests
       - name: Run tests
@@ -83,4 +84,4 @@ jobs:
         with:
           command: test
           args: --target=${{ matrix.target }}
-          use-cross: true
+          use-cross: ${{ contains(matrix.os, 'ubuntu') }}

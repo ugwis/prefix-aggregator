@@ -49,14 +49,21 @@ jobs:
         with:
           toolchain: stable
           override: true
+          target: ${{ matrix.target }}
       - uses: actions-rs/cargo@v1.0.1
         with:
           command: build
           args: --release --target=${{ matrix.target }}
-          use-cross: true
+          use-cross: ${{ contains(matrix.os, 'ubuntu') }}
 
-      - run: |
-          zip --junk-paths prefix-aggregator-${{ matrix.target }} target/${{ matrix.target }}/release/prefix-aggregator{,.exe}
+      - name: Package (Windows)
+        if: contains(matrix.target, 'windows')
+        run: |
+          zip --junk-paths prefix-aggregator-${{ matrix.target }} target/${{ matrix.target }}/release/prefix-aggregator.exe
+      - name: Package (Unix-like)
+        if: "!contains(matrix.target, 'windows')"
+        run: |
+          zip --junk-paths prefix-aggregator-${{ matrix.target }} target/${{ matrix.target }}/release/prefix-aggregator
       - uses: actions/upload-artifact@v3
         with:
           name: build-${{ matrix.target }}
