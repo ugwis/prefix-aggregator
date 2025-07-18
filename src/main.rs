@@ -1,5 +1,4 @@
-use std::fmt::Display;
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter, Write};
 use std::io::{self, BufRead};
 use std::net::AddrParseError;
 use std::net::Ipv4Addr;
@@ -12,12 +11,11 @@ enum MyError {
 }
 
 impl Display for MyError {
-    fn fmt(&self, _: &mut Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match *self {
-            MyError::ParseIntError(ref e) => print!("Parse int error {}", e),
-            MyError::ParseIpv4Error(ref e) => print!("Parse Ipv4 address error {}", e),
+            MyError::ParseIntError(ref e) => write!(f, "Parse int error {e}"),
+            MyError::ParseIpv4Error(ref e) => write!(f, "Parse Ipv4 address error {e}"),
         }
-        Ok(())
     }
 }
 
@@ -39,16 +37,19 @@ struct Ipv4Cidr {
     mask: u8,
 }
 
+impl Display for Ipv4Cidr {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{}/{}", self.address, self.mask)
+    }
+}
+
 impl Ipv4Cidr {
     fn new(address: Ipv4Addr, mask: u8) -> Self {
         let cidr = Ipv4Cidr { address, mask };
-        return Self {
+        Self {
             address: cidr.network_addr(),
             mask: cidr.network_mask(),
-        };
-    }
-    fn to_string(&self) -> String {
-        format!("{}/{}", self.address, self.mask)
+        }
     }
     fn mask_filter(&self) -> u32 {
         (!0u32).checked_shr(self.mask as u32).unwrap_or(0)
@@ -95,16 +96,16 @@ fn merge(cidr1: Ipv4Cidr, cidr2: Ipv4Cidr) -> Option<Ipv4Cidr> {
     // Check wether cidr1 is adjascent to cidr2 vice versa
     let cidr3 = cidr1.generate_wrap_cidr();
     let cidr4 = cidr2.generate_wrap_cidr();
-    //println!("[{}-{}]{} == {}: {}", cidr1.to_string(), cidr2.to_string(), cidr3.to_string(), cidr4.to_string(), cidr3==cidr4);
+    //println!("[{}-{}]{} == {}: {}", cidr1, cidr2, cidr3, cidr4, cidr3==cidr4);
     if cidr3 == cidr4 && cidr1 != cidr2 {
         return Some(cidr3);
     }
-    return None;
+    None
 }
 
 // Check wether two CIDR blocks are not mergable but adjascent
 fn is_adjascent(cidr1: Ipv4Cidr, cidr2: Ipv4Cidr) -> bool {
-    return u32::from(cidr1.broadcast_addr()) + 1 == u32::from(cidr2.network_addr());
+    u32::from(cidr1.broadcast_addr()) + 1 == u32::from(cidr2.network_addr())
 }
 
 fn main() {
@@ -142,7 +143,7 @@ fn main() {
                     stack.push(cidr1);
                     if !is_adjascent(cidr1, cidr2) {
                         for x in stack {
-                            println!("{}", x.to_string());
+                            println!("{}", x);
                         }
                         stack = Vec::new();
                     }
@@ -153,6 +154,6 @@ fn main() {
         }
     }
     for x in stack {
-        println!("{}", x.to_string());
+        println!("{}", x);
     }
 }
