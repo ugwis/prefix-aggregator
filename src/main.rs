@@ -1,10 +1,10 @@
-use std::io::{self, BufRead};
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::net::Ipv4Addr;
+use std::io::{self, BufRead};
 use std::net::AddrParseError;
-use std::str::FromStr;
+use std::net::Ipv4Addr;
 use std::num::ParseIntError;
+use std::str::FromStr;
 
 enum MyError {
     ParseIntError(ParseIntError),
@@ -14,8 +14,8 @@ enum MyError {
 impl Display for MyError {
     fn fmt(&self, _: &mut Formatter) -> std::fmt::Result {
         match *self {
-            MyError::ParseIntError(ref e) => print!("Parse int error {}",e),
-            MyError::ParseIpv4Error(ref e) => print!("Parse Ipv4 address error {}",e)
+            MyError::ParseIntError(ref e) => print!("Parse int error {}", e),
+            MyError::ParseIpv4Error(ref e) => print!("Parse Ipv4 address error {}", e),
         }
         Ok(())
     }
@@ -33,7 +33,6 @@ impl std::convert::From<AddrParseError> for MyError {
     }
 }
 
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 struct Ipv4Cidr {
     address: Ipv4Addr,
@@ -46,7 +45,7 @@ impl Ipv4Cidr {
         return Self {
             address: cidr.network_addr(),
             mask: cidr.network_mask(),
-        }
+        };
     }
     fn to_string(&self) -> String {
         format!("{}/{}", self.address, self.mask)
@@ -64,10 +63,7 @@ impl Ipv4Cidr {
         self.mask
     }
     fn generate_wrap_cidr(&self) -> Ipv4Cidr {
-        Ipv4Cidr::new(
-            self.address,
-            self.mask - 1
-        )
+        Ipv4Cidr::new(self.address, self.mask - 1)
     }
 }
 
@@ -77,19 +73,22 @@ impl FromStr for Ipv4Cidr {
         let v: Vec<&str> = cidr.split('/').collect();
         Ok(Ipv4Cidr::new(
             Ipv4Addr::from_str(v[0]).unwrap(),
-            v[1].parse::<u8>()?
+            v[1].parse::<u8>()?,
         ))
     }
 }
 
-
 // Merge two CIDR blocks
 fn merge(cidr1: Ipv4Cidr, cidr2: Ipv4Cidr) -> Option<Ipv4Cidr> {
     // Check wether cidr1 includes cidr2 vice versa
-    if cidr1.network_addr() <= cidr2.network_addr() && cidr2.broadcast_addr() <= cidr1.broadcast_addr() {
+    if cidr1.network_addr() <= cidr2.network_addr()
+        && cidr2.broadcast_addr() <= cidr1.broadcast_addr()
+    {
         return Some(cidr1);
     }
-    if cidr2.network_addr() <= cidr1.network_addr() && cidr1.broadcast_addr() <= cidr2.broadcast_addr() {
+    if cidr2.network_addr() <= cidr1.network_addr()
+        && cidr1.broadcast_addr() <= cidr2.broadcast_addr()
+    {
         return Some(cidr2);
     }
 
@@ -107,7 +106,6 @@ fn merge(cidr1: Ipv4Cidr, cidr2: Ipv4Cidr) -> Option<Ipv4Cidr> {
 fn is_adjascent(cidr1: Ipv4Cidr, cidr2: Ipv4Cidr) -> bool {
     return u32::from(cidr1.broadcast_addr()) + 1 == u32::from(cidr2.network_addr());
 }
-
 
 fn main() {
     let stdin = io::stdin();
@@ -139,10 +137,10 @@ fn main() {
             match merged {
                 Some(merged) => {
                     stack.push(merged);
-                },
+                }
                 None => {
                     stack.push(cidr1);
-                    if ! is_adjascent(cidr1, cidr2) {
+                    if !is_adjascent(cidr1, cidr2) {
                         for x in stack {
                             println!("{}", x.to_string());
                         }
@@ -150,7 +148,7 @@ fn main() {
                     }
                     stack.push(cidr2);
                     break;
-                },
+                }
             }
         }
     }
