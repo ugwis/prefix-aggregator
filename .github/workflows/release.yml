@@ -64,56 +64,28 @@ jobs:
         if: "!contains(matrix.target, 'windows')"
         run: |
           zip --junk-paths prefix-aggregator-${{ matrix.target }} target/${{ matrix.target }}/release/prefix-aggregator
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.target }}
           path: prefix-aggregator-${{ matrix.target }}.zip
 
-  create-release:
+  release:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
-      - id: create-release
-        uses: actions/create-release@v1.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          path: artifacts
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/build-*/prefix-aggregator-*.zip
           draft: false
           prerelease: false
-      - run: |
-          echo '${{ steps.create-release.outputs.upload_url }}' > release_upload_url.txt
-      - uses: actions/upload-artifact@v3
-        with:
-          name: create-release
-          path: release_upload_url.txt
-
-  upload-release:
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-gnu
-          - x86_64-apple-darwin
-          - aarch64-apple-darwin
-    needs: [create-release]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: create-release
-      - id: upload-url
-        run: |
-          echo "::set-output name=url::$(cat create-release/release_upload_url.txt)"
-      - uses: actions/download-artifact@v3
-        with:
-          name: build-${{ matrix.target }}
-      - uses: actions/upload-release-asset@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.upload-url.outputs.url }}
-          asset_path: ./build-${{ matrix.target }}/prefix-aggregator-${{ matrix.target }}.zip
-          asset_name: prefix-aggregator-${{ matrix.target }}.zip
-          asset_content_type: application/zip
