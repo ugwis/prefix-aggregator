@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter, Write};
+use std::fmt::{Display, Formatter};
 use std::io::{self, BufRead};
 use std::net::AddrParseError;
 use std::net::Ipv4Addr;
@@ -143,7 +143,7 @@ fn main() {
                     stack.push(cidr1);
                     if !is_adjascent(cidr1, cidr2) {
                         for x in stack {
-                            println!("{}", x);
+                            println!("{x}");
                         }
                         stack = Vec::new();
                     }
@@ -154,6 +154,6 @@ fn main() {
         }
     }
     for x in stack {
-        println!("{}", x);
+        println!("{x}");
     }
 }
